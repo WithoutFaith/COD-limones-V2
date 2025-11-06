@@ -5,7 +5,7 @@ import streamlit as st
 # --- CONFIGURACIÓN DE LA APP ---
 st.set_page_config(page_title="Detector de plagas en limones COD", page_icon="🪲", layout="centered")
 st.title("🪲 Detector de plagas en limones COD")
-st.caption("Sube una imagen para analizarla con tu modelo YOLO local (sin API).")
+st.caption("Sube una imagen para analizarla")
 
 # --- RUTAS DE PESOS ---
 DEFAULT_WEIGHTS = "weights/best.pt"
@@ -196,3 +196,4 @@ if uploaded:
     st.download_button("⬇️ Descargar imagen con detecciones", buf, "detecciones.png", "image/png")
 else:
     st.info("Sube una imagen para ejecutar la detección.")
+
