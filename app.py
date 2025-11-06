@@ -1,6 +1,19 @@
-# --- Descarga robusta + validación del .pt ---
-import re, requests, os, streamlit as st
+import os, io, tempfile, re, requests
+from PIL import Image, ImageDraw, ImageFont
+import streamlit as st
 
+# --- CONFIGURACIÓN DE LA APP ---
+st.set_page_config(page_title="Detector de plagas en limones COD", page_icon="🪲", layout="centered")
+st.title("🪲 Detector de plagas en limones COD")
+st.caption("Sube una imagen para analizarla con tu modelo YOLO local (sin API).")
+
+# --- RUTAS DE PESOS ---
+DEFAULT_WEIGHTS = "weights/best.pt"
+WEIGHTS_PATH = os.getenv("YOLO_WEIGHTS", DEFAULT_WEIGHTS)
+
+# =======================
+# DESCARGA ROBUSTA + VALIDACIÓN (.pt)
+# =======================
 def _gdrive_extract_id(url: str):
     m = re.search(r"/d/([a-zA-Z0-9_-]{10,})/", url)
     if m: return m.group(1)
@@ -50,11 +63,10 @@ def maybe_download_weights(weights_path: str):
     # ¿ya existe y parece válido?
     if os.path.exists(weights_path):
         sz = _size_mb(weights_path)
-        if (not _looks_like_html(weights_path)) and (sz > 50):  # esperamos ~85 MB
+        if (not _looks_like_html(weights_path)) and (sz > 50):
             st.info(f"✅ Pesos detectados: {weights_path} ({sz:.1f} MB)")
             return
         else:
-            # borrar archivo corrupto/HTML o demasiado pequeño
             try: os.remove(weights_path)
             except: pass
 
@@ -63,24 +75,19 @@ def maybe_download_weights(weights_path: str):
 
     try:
         if "drive.google.com" in url:
-            # 1er intento: requests manejando token
             _download_from_gdrive(url, weights_path)
-
-            # si parece HTML o quedó muy chico, reintenta con gdown si está disponible
             if _looks_like_html(weights_path) or _size_mb(weights_path) < 50:
                 try:
                     import gdown
                     os.remove(weights_path)
                     gdown.download(url=url, output=weights_path, quiet=False, fuzzy=True)
                 except Exception as ge:
-                    raise RuntimeError(f"Fallo Drive; prueba HuggingFace o Dropbox. Detalle gdown: {ge}")
+                    raise RuntimeError(f"Fallo Drive; prueba HuggingFace o Dropbox. gdown: {ge}")
         else:
-            # URL directa (HuggingFace raw, S3, Dropbox ?dl=1)
             with requests.get(url, stream=True, timeout=180) as r:
                 r.raise_for_status()
                 _save_stream(r, weights_path)
 
-        # validar resultado final
         sz = _size_mb(weights_path)
         if (not os.path.exists(weights_path)) or _looks_like_html(weights_path) or (sz < 50):
             raise RuntimeError("La descarga no parece un .pt válido (muy pequeño o HTML).")
@@ -89,4 +96,22 @@ def maybe_download_weights(weights_path: str):
         st.error(f"❌ No se pudo descargar los pesos desde WEIGHTS_URL.\nDetalle: {e}")
         st.stop()
 
+# --- LLAMAR LA DESCARGA DESPUÉS DE DEFINIR LA FUNCIÓN ---
 maybe_download_weights(WEIGHTS_PATH)
+
+# --- CHEQUEO OPCIONAL DE OPENCV ---
+try:
+    import cv2, numpy as np
+    st.write(f"OpenCV OK: {cv2.__version__} · NumPy: {np.__version__}")
+except Exception as e:
+    st.error(f"❌ Error importando OpenCV/NumPy: {e}")
+    st.stop()
+
+# --- IMPORTAR YOLO ---
+from ultralytics import YOLO
+
+@st.cache_resource
+def load_model(path: str):
+    return YOLO(path)
+
+model = load_model(WEIGHTS_PATH)
