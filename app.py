@@ -64,8 +64,7 @@ def maybe_download_weights(weights_path: str):
     if os.path.exists(weights_path):
         sz = _size_mb(weights_path)
         if (not _looks_like_html(weights_path)) and (sz > 50):
-            st.info(f"✅ Pesos detectados: {weights_path} ({sz:.1f} MB)")
-            return
+            return  # no mostrar mensajes
         else:
             try: os.remove(weights_path)
             except: pass
@@ -91,7 +90,6 @@ def maybe_download_weights(weights_path: str):
         sz = _size_mb(weights_path)
         if (not os.path.exists(weights_path)) or _looks_like_html(weights_path) or (sz < 50):
             raise RuntimeError("La descarga no parece un .pt válido (muy pequeño o HTML).")
-        st.info(f"✅ Pesos descargados: {weights_path} ({sz:.1f} MB)")
     except Exception as e:
         st.error(f"❌ No se pudo descargar los pesos desde WEIGHTS_URL.\nDetalle: {e}")
         st.stop()
@@ -99,24 +97,14 @@ def maybe_download_weights(weights_path: str):
 # --- LLAMAR LA DESCARGA DESPUÉS DE DEFINIR LA FUNCIÓN ---
 maybe_download_weights(WEIGHTS_PATH)
 
-# --- CHEQUEO OPCIONAL DE OPENCV ---
+# --- CHEQUEO SILENCIOSO DE OPENCV ---
 try:
     import cv2, numpy as np
-    st.write(f"OpenCV OK: {cv2.__version__} · NumPy: {np.__version__}")
 except Exception as e:
     st.error(f"❌ Error importando OpenCV/NumPy: {e}")
     st.stop()
 
 # --- IMPORTAR YOLO ---
-from ultralytics import YOLO
-
-@st.cache_resource
-def load_model(path: str):
-    return YOLO(path)
-
-model = load_model(WEIGHTS_PATH)
-
-# ==== CARGA DEL MODELO YOLO ====
 from ultralytics import YOLO
 
 @st.cache_resource
@@ -157,7 +145,6 @@ def to_json(results, class_names):
             })
     return {"image": {"width": w, "height": h}, "predictions": preds}
 
-from PIL import ImageDraw, ImageFont
 def draw_boxes(pil_img, preds):
     draw = ImageDraw.Draw(pil_img)
     try: font = ImageFont.load_default()
@@ -194,7 +181,6 @@ if uploaded:
         temp_path = tmp.name
 
     with st.spinner("🔍 Detectando..."):
-        # conf e iou vienen de los sliders
         results = model.predict(source=temp_path, conf=conf, iou=iou, verbose=False)
 
     preds = to_json(results, model.names)
