@@ -126,7 +126,7 @@ st.caption(
 
 # ==== UTILIDADES ====
 
-# Normalizador de nombres (para que "Hoja_Verde", "verde-hoja", etc. cuenten como "verde")
+# Normalizador de nombres (para que "Hoja_verdes", "verdes-hoja", etc. cuenten como "verdes")
 def normalize(label: str) -> str:
     return (
         label.strip()
@@ -140,17 +140,17 @@ def normalize(label: str) -> str:
 
 # Diagnósticos y colores por clase (usamos claves NORMALIZADAS)
 DIAGNOSIS = {
-    "negra": {
+    "negras": {
         "color": "red",
-        "msg": "⚠️ Se detectaron **hojas negras** — posible fumagina/daño por plagas. Revisa focos, retira hojas muy afectadas y evalúa tratamiento fungicida."
+        "msg": "⚠️ Se detectaron **hojas negrass** — posible fumagina/daño por plagas. Revisa focos, retira hojas muy afectadas y evalúa tratamiento fungicida."
     },
     "blanca": {
         "color": "orange",
         "msg": "⚠️ Se detectaron **hojas blancas (melaza)** — probable presencia de insectos (pulgones/mosca blanca). Limpia, monitorea y considera control biológico o químico."
     },
-    "verde": {
+    "verdes": {
         "color": "lime",
-        "msg": "✅ Solo se detectaron **hojas verdes** — el cultivo parece sano en esta imagen."
+        "msg": "✅ Solo se detectaron **hojas verdess** — el cultivo parece sano en esta imagen."
     }
 }
 
@@ -223,22 +223,22 @@ if uploaded:
     counts = Counter(normalize(p["class"]) for p in preds.get("predictions", []))
 
     if counts:
-        c_negra  = int(counts.get("negra", 0))
+        c_negras  = int(counts.get("negras", 0))
         c_blanca = int(counts.get("blanca", 0))
-        c_verde  = int(counts.get("verde", 0))
+        c_verdes  = int(counts.get("verdes", 0))
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("Negra",  c_negra)
+        col1.metric("negras",  c_negras)
         col2.metric("Blanca", c_blanca)
-        col3.metric("Verde",  c_verde)
+        col3.metric("verdes",  c_verdes)
 
-        # Prioridad del diagnóstico: negra > blanca > verde
-        if c_negra > 0:
-            st.error(DIAGNOSIS["negra"]["msg"])
+        # Prioridad del diagnóstico: negras > blanca > verdes
+        if c_negras > 0:
+            st.error(DIAGNOSIS["negras"]["msg"])
         elif c_blanca > 0:
             st.warning(DIAGNOSIS["blanca"]["msg"])
-        elif c_verde > 0:
-            st.success(DIAGNOSIS["verde"]["msg"])
+        elif c_verdes > 0:
+            st.success(DIAGNOSIS["verdes"]["msg"])
     else:
         st.info("No se detectaron hojas en la imagen.")
 
@@ -254,3 +254,4 @@ if uploaded:
     st.download_button("⬇️ Descargar imagen con detecciones", buf, "detecciones.png", "image/png")
 else:
     st.info("Sube una imagen para ejecutar la detección.")
+
