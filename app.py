@@ -1,38 +1,44 @@
-import os, io, tempfile
+import os, io, tempfile, requests
 from PIL import Image, ImageDraw, ImageFont
 import streamlit as st
 
-# Ultralytics YOLO (v8)
+# --- YOLO (Ultralytics) ---
 from ultralytics import YOLO
 
 st.set_page_config(page_title="Detector de plagas en limones COD", page_icon="🪲", layout="centered")
 st.title("🪲 Detector de plagas en limones COD")
 st.caption("Sube una imagen para analizarla con tu modelo YOLO local (sin API).")
 
-# --- Ruta a pesos ---
+# --- Rutas de pesos ---
 DEFAULT_WEIGHTS = "weights/best.pt"
 WEIGHTS_PATH = os.getenv("YOLO_WEIGHTS", DEFAULT_WEIGHTS)
 
-# --- Descargar pesos si se indicó URL (útil en Streamlit Cloud) ---
+# --- Función para descargar pesos si no existen ---
 def maybe_download_weights(weights_path: str):
-    url = os.getenv("WEIGHTS_URL")  # opcional
+    url = os.getenv("WEIGHTS_URL")
     if os.path.exists(weights_path) or not url:
         return
-    import requests
     os.makedirs(os.path.dirname(weights_path), exist_ok=True)
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open(weights_path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=1024 * 1024):
-                if chunk:
-                    f.write(chunk)
+    try:
+        if "drive.google.com" in url:
+            import gdown
+            # Maneja enlaces tipo /file/d/<ID>/view o uc?export=download&id=<ID>
+            gdown.download(url=url, output=weights_path, quiet=False, fuzzy=True)
+        else:
+            with requests.get(url, stream=True, timeout=120) as r:
+                r.raise_for_status()
+                with open(weights_path, "wb") as f:
+                    for chunk in r.iter_content(1024 * 1024):
+                        if chunk:
+                            f.write(chunk)
+    except Exception as e:
+        st.error(f"❌ No se pudo descargar los pesos desde WEIGHTS_URL.\nDetalle: {e}")
+        st.stop()
 
 maybe_download_weights(WEIGHTS_PATH)
 
 if not os.path.exists(WEIGHTS_PATH):
-    st.error(f"No se encontró el archivo de pesos: {WEIGHTS_PATH}\n"
-             f"• Sube tu modelo a weights/best.pt\n"
-             f"• o define la variable de entorno WEIGHTS_URL con un enlace de descarga directa.")
+    st.error(f"No se encontró el archivo de pesos: {WEIGHTS_PATH}")
     st.stop()
 
 @st.cache_resource
@@ -41,10 +47,10 @@ def load_model(path: str):
 
 model = load_model(WEIGHTS_PATH)
 
+# --- Interfaz Streamlit ---
 uploaded = st.file_uploader("Sube una imagen (JPG/PNG)", type=["jpg", "jpeg", "png"])
-
 conf = st.slider("Confianza mínima", 0.0, 1.0, 0.5, 0.05)
-iou  = st.slider("IoU (overlap) máx.", 0.0, 1.0, 0.5, 0.05)
+iou = st.slider("IoU (overlap) máx.", 0.0, 1.0, 0.5, 0.05)
 
 st.caption(
     "💡 **Confianza**: 0.5–0.7 equilibrio · 0.8–0.9 muy estricto  \n"
