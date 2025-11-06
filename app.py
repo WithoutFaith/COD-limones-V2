@@ -125,6 +125,26 @@ st.caption(
 )
 
 # ==== UTILIDADES ====
+
+# Diagnósticos y colores por clase
+DIAGNOSIS = {
+    "negra": {
+        "color": "red",
+        "msg": "⚠️ Se detectaron **hojas negras** — posible fumagina/daño por plagas. Revisa focos, retira hojas muy afectadas y evalúa tratamiento fungicida."
+    },
+    "blanca": {
+        "color": "orange",
+        "msg": "⚠️ Se detectaron **hojas blancas (melaza)** — probable presencia de insectos (pulgones/mosca blanca). Limpia, monitorea y considera control biológico o químico."
+    },
+    "verde": {
+        "color": "lime",
+        "msg": "✅ Solo se detectaron **hojas verdes** — el cultivo parece sano en esta imagen."
+    }
+}
+
+def pick_color(label: str) -> str:
+    return DIAGNOSIS.get(label.lower(), {}).get("color", "gray")
+
 def to_json(results, class_names):
     if not results:
         return {"image": {}, "predictions": []}
@@ -158,7 +178,8 @@ def draw_boxes(pil_img, preds):
         x, y, ww, hh = p["x"], p["y"], p["width"], p["height"]
         x0, y0 = int((x - ww/2) * sx), int((y - hh/2) * sy)
         x1, y1 = int((x + ww/2) * sx), int((y + hh/2) * sy)
-        draw.rectangle([x0, y0, x1, y1], outline="lime", width=3)
+        color = pick_color(p["class"])
+        draw.rectangle([x0, y0, x1, y1], outline=color, width=3)
         label = f"{p['class']} {p['confidence']:.2f}"
         pad = 3
         if font:
@@ -184,6 +205,30 @@ if uploaded:
         results = model.predict(source=temp_path, conf=conf, iou=iou, verbose=False)
 
     preds = to_json(results, model.names)
+
+    # ---- Conteo por clase y diagnóstico resumido ----
+    from collections import Counter
+    counts = Counter(p["class"].lower() for p in preds.get("predictions", []))
+    if counts:
+        c_negra  = int(counts.get("negra", 0))
+        c_blanca = int(counts.get("blanca", 0))
+        c_verde  = int(counts.get("verde", 0))
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Negra",  c_negra)
+        col2.metric("Blanca", c_blanca)
+        col3.metric("Verde",  c_verde)
+
+        # Prioridad del diagnóstico: negra > blanca > verde
+        if c_negra > 0:
+            st.error(DIAGNOSIS["negra"]["msg"])
+        elif c_blanca > 0:
+            st.warning(DIAGNOSIS["blanca"]["msg"])
+        elif c_verde > 0:
+            st.success(DIAGNOSIS["verde"]["msg"])
+    else:
+        st.info("No se detectaron hojas en la imagen.")
+
     st.subheader("📊 Predicciones (JSON)")
     st.json(preds)
 
@@ -196,4 +241,3 @@ if uploaded:
     st.download_button("⬇️ Descargar imagen con detecciones", buf, "detecciones.png", "image/png")
 else:
     st.info("Sube una imagen para ejecutar la detección.")
-
