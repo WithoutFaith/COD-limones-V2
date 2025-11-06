@@ -126,7 +126,19 @@ st.caption(
 
 # ==== UTILIDADES ====
 
-# Diagnósticos y colores por clase
+# Normalizador de nombres (para que "Hoja_Verde", "verde-hoja", etc. cuenten como "verde")
+def normalize(label: str) -> str:
+    return (
+        label.strip()
+             .lower()
+             .replace("_", "")
+             .replace("-", "")
+             .replace("hoja", "")
+             .replace(" hojas", "")
+             .strip()
+    )
+
+# Diagnósticos y colores por clase (usamos claves NORMALIZADAS)
 DIAGNOSIS = {
     "negra": {
         "color": "red",
@@ -143,7 +155,7 @@ DIAGNOSIS = {
 }
 
 def pick_color(label: str) -> str:
-    return DIAGNOSIS.get(label.lower(), {}).get("color", "gray")
+    return DIAGNOSIS.get(normalize(label), {}).get("color", "gray")
 
 def to_json(results, class_names):
     if not results:
@@ -160,7 +172,7 @@ def to_json(results, class_names):
             xc, yc = float(x0 + ww/2), float(y0 + hh/2)
             preds.append({
                 "x": xc, "y": yc, "width": ww, "height": hh,
-                "class": class_names.get(ci, str(ci)),
+                "class": class_names.get(ci, str(ci)),  # nombre original
                 "confidence": float(cf)
             })
     return {"image": {"width": w, "height": h}, "predictions": preds}
@@ -206,9 +218,10 @@ if uploaded:
 
     preds = to_json(results, model.names)
 
-    # ---- Conteo por clase y diagnóstico resumido ----
+    # ---- Conteo por clase (normalizado) y diagnóstico resumido ----
     from collections import Counter
-    counts = Counter(p["class"].lower() for p in preds.get("predictions", []))
+    counts = Counter(normalize(p["class"]) for p in preds.get("predictions", []))
+
     if counts:
         c_negra  = int(counts.get("negra", 0))
         c_blanca = int(counts.get("blanca", 0))
