@@ -1,7 +1,14 @@
 streamlit
 pillow
 requests
-opencv-python-headless
+
+# Evita conflictos con OpenCV
+numpy==1.26.4
+opencv-python-headless==4.8.1.78
+
+# Ultralytics YOLOv8 estable
 ultralytics==8.3.0
-torch==2.2.2
-torchvision==0.17.2
+
+# PyTorch CPU compatibles con Py3.11
+torch==2.1.2
+torchvision==0.16.2
