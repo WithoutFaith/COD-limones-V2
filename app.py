@@ -231,6 +231,33 @@ def render_black_aphid_card():
     </div>
     """, unsafe_allow_html=True)
 
+def render_brownblack_aphid_card():
+    st.markdown("""
+    <style>
+      .card {font-family:'Poppins',system-ui; background:#0f172a; border:1px solid #1f2937;
+             border-radius:16px; padding:18px 20px; color:#e5e7eb;}
+      .tag {display:inline-block; padding:4px 10px; border-radius:999px; font-size:.82rem;
+            background:#111827; color:#f59e0b; border:1px solid #374151; margin-bottom:8px;}
+      table {width:100%; border-collapse:separate; border-spacing:0 8px; font-size:.95rem}
+      td:nth-child(1){color:#9ca3af; width:34%;}
+      td{vertical-align:top; padding:6px 8px; background:#0b1220; border-radius:10px; border:1px solid #1f2937;}
+      .emph{font-weight:600; color:#f9fafb}
+      .strong{font-weight:700;}
+    </style>
+    <div class="card">
+      <span class="tag">🍊 Pulgón Pardo/Negro del Naranjo <span class="emph">(Toxoptera aurantii)</span> — Adulto áptero</span>
+      <table>
+        <tr><td><span class="strong">Identificación</span></td><td>Tamaño similar (1.5–2 mm). Cuerpo <span class="emph">ovoidal</span>, de color <span class="emph">pardo oscuro a negro</span> y brillante. Se distingue de <span class="emph">T. citricida</span> porque las hembras ápteras tienen <span class="emph">antenas con bandas blancas y negras</span>.</td></tr>
+        <tr><td><span class="strong">Ubicación</span></td><td>Colonias muy densas en el <span class="emph">envés de hojas tiernas</span>, <span class="emph">yemas florales</span> y <span class="emph">frutos recién cuajados</span>.</td></tr>
+        <tr><td><span class="strong">Temporadas (Perú)</span></td><td>Activo todo el año en climas tropicales; picos en <span class="emph">Primavera</span> (Sep–Dic) y <span class="emph">Verano</span> (Dic–Mar), coincidiendo con la <span class="emph">brotación y floración</span>.</td></tr>
+        <tr><td><span class="strong">Daño Directo</span></td><td><span class="emph">Succiona savia</span>, causando que las hojas se <span class="emph">deformen ligeramente</span> y se <span class="emph">endurezcan</span>. En flores y frutos jóvenes puede provocar <span class="emph">caída</span> o desarrollo dificultoso.</td></tr>
+        <tr><td><span class="strong">Daño Indirecto</span></td><td>Produce <span class="emph">melaza</span> que es rápidamente cubierta por <span class="emph">fumagina</span> (negrilla), limitando la fotosíntesis.</td></tr>
+        <tr><td><span class="strong">Importancia</span></td><td>Especie <span class="emph">polífaga</span> (cacao, café, mango, etc.). Vector de virus (como el <span class="emph">VTC</span>), aunque suele considerarse <span class="emph">menos eficiente</span> que <span class="emph">T. citricida</span> como vector del VTC.</td></tr>
+      </table>
+    </div>
+    """, unsafe_allow_html=True)
+   
+
 # ==== INFERENCIA ====
 if uploaded:
     img = Image.open(uploaded).convert("RGB")
@@ -271,24 +298,23 @@ if uploaded:
     else:
         st.info("No se detectaron hojas en la imagen.")
 
-    # Si se detectan hojas negras, mostrar ficha técnica + foto
-    if c_negras > 0:
-        left, right = st.columns([2, 1])
-        with left:
-            render_black_aphid_card()
-        with right:
-            if APHID_IMAGE_URL:
-                st.image(APHID_IMAGE_URL, caption="Pulgón negro (referencia)", use_container_width=True)
-            else:
-                st.caption("ℹ️ Agrega APHID_IMAGE_URL en Secrets/.env para mostrar una foto de referencia.")
+   # Si se detectan hojas negras, mostrar dos fichas técnicas + dos fotos
+if c_negras > 0:
+    left, right = st.columns([2, 1])
 
-    # JSON opcional colapsable
-    with st.expander("📊 Ver JSON de predicciones"):
-        st.json(preds)
+    with left:
+        # 1) T. citricida
+        render_black_aphid_card()
+        st.divider()
+        # 2) T. aurantii
+        render_brownblack_aphid_card()
 
-    buf = io.BytesIO()
-    vis.save(buf, "PNG")
-    buf.seek(0)
-    st.download_button("⬇️ Descargar imagen con detecciones", buf, "detecciones.png", "image/png")
-else:
-    st.info("Sube una imagen para ejecutar la detección.")
+    with right:
+        # Imagen 1
+        if APHID_IMAGE_URL:
+            st.image(APHID_IMAGE_URL, caption="Pulgón negro (T. citricida) — referencia", use_container_width=True)
+        # Imagen 2
+        if APHID2_IMAGE_URL:
+            st.image(APHID2_IMAGE_URL, caption="Pulgón pardo/negro (T. aurantii) — referencia", use_container_width=True)
+        if not (APHID_IMAGE_URL or APHID2_IMAGE_URL):
+            st.caption("ℹ️ Agrega APHID_IMAGE_URL y/o APHID2_IMAGE_URL en Secrets/.env para mostrar fotos de referencia.")
