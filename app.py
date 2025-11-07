@@ -260,7 +260,6 @@ def render_brownblack_aphid_card():
     </div>
     """, unsafe_allow_html=True)
    
-
 # ==== INFERENCIA ====
 if uploaded:
     img = Image.open(uploaded).convert("RGB")
@@ -278,16 +277,18 @@ if uploaded:
     preds = to_json(results, model.names)
 
     from collections import Counter
-    counts = Counter(canonical(p["class"]) for p in preds.get("predictions", []))
-    c_negras  = int(counts.get("negras", 0))
-    c_blanca  = int(counts.get("blanca", 0))
-    c_verdes  = int(counts.get("verdes", 0))
+    counts   = Counter(canonical(p["class"]) for p in preds.get("predictions", []))
+    c_negras = int(counts.get("negras", 0))
+    c_blanca = int(counts.get("blanca", 0))
+    c_verdes = int(counts.get("verdes", 0))
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Negras",  c_negras)
-    col2.metric("Blanca",  c_blanca)
-    col3.metric("Verdes",  c_verdes)
+    # Métricas
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Negras",  c_negras)
+    m2.metric("Blanca",  c_blanca)
+    m3.metric("Verdes",  c_verdes)
 
+    # Imagen con cajas
     vis = draw_boxes(img.copy(), preds)
     st.image(vis, caption="Detecciones", use_container_width=True)
 
@@ -301,30 +302,40 @@ if uploaded:
     else:
         st.info("No se detectaron hojas en la imagen.")
 
-  # Si se detectan hojas negras, mostrar dos fichas técnicas + fotos alineadas
-if c_negras > 0:
-    # --- Fila 1: T. citricida ---
-    col1, col2 = st.columns([2, 1], vertical_alignment="center")
-    with col1:
-        render_black_aphid_card()
-    with col2:
-        if APHID_IMAGE_URL:
-            st.image(APHID_IMAGE_URL, caption="Pulgón negro (T. citricida) — referencia", use_container_width=True)
-        else:
-            st.caption("ℹ️ Falta imagen de T. citricida (APHID_IMAGE_URL).")
+    # Si se detectan hojas negras, mostrar dos fichas técnicas + fotos alineadas
+    if c_negras > 0:
+        # --- Fila 1: T. citricida ---
+        col1, col2 = st.columns([2, 1], vertical_alignment="center")
+        with col1:
+            render_black_aphid_card()
+        with col2:
+            if APHID_IMAGE_URL:
+                st.image(APHID_IMAGE_URL, caption="Pulgón negro (T. citricida) — referencia", use_container_width=True)
+            else:
+                st.caption("ℹ️ Falta imagen de T. citricida (APHID_IMAGE_URL).")
 
-    st.divider()  # Línea separadora entre fichas
+        st.divider()  # Separador entre fichas
 
-    # --- Fila 2: T. aurantii ---
-    col3, col4 = st.columns([2, 1], vertical_alignment="center")
-    with col3:
-        render_brownblack_aphid_card()
-    with col4:
-        if APHID2_IMAGE_URL:
-            st.image(APHID2_IMAGE_URL, caption="Pulgón pardo/negro (T. aurantii) — referencia", use_container_width=True)
-        else:
-            st.caption("ℹ️ Falta imagen de T. aurantii (APHID2_IMAGE_URL).")
+        # --- Fila 2: T. aurantii ---
+        col3, col4 = st.columns([2, 1], vertical_alignment="center")
+        with col3:
+            render_brownblack_aphid_card()
+        with col4:
+            if 'APHID2_IMAGE_URL' in globals() and APHID2_IMAGE_URL:
+                st.image(APHID2_IMAGE_URL, caption="Pulgón pardo/negro (T. aurantii) — referencia", use_container_width=True)
+            else:
+                st.caption("ℹ️ Falta imagen de T. aurantii (APHID2_IMAGE_URL).")
 
+    # JSON opcional colapsable + descarga
+    with st.expander("📊 Ver JSON de predicciones"):
+        st.json(preds)
+
+    buf = io.BytesIO()
+    vis.save(buf, "PNG"); buf.seek(0)
+    st.download_button("⬇️ Descargar imagen con detecciones", buf, "detecciones.png", "image/png")
+
+else:
+    st.info("Sube una imagen para ejecutar la detección.")
 
 
 
