@@ -11,6 +11,14 @@ st.caption("Sube una imagen para analizarla")
 DEFAULT_WEIGHTS = "weights/best.pt"
 WEIGHTS_PATH = os.getenv("YOLO_WEIGHTS", DEFAULT_WEIGHTS)
 
+# --- IMAGEN DE REFERENCIA (Pulgón Negro) ---
+# Puedes usar una URL directa o definirla en tu archivo de Secrets
+APHID_IMAGE_URL = st.secrets.get("APHID_IMAGE_URL", "") or os.getenv("APHID_IMAGE_URL", "")
+
+# Si quieres fijarla manualmente:
+if not APHID_IMAGE_URL:
+    APHID_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/4b/Toxoptera_citricida02.jpg"
+
 # =======================
 # DESCARGA ROBUSTA + VALIDACIÓN (.pt)
 # =======================
@@ -126,83 +134,73 @@ st.caption(
 
 # ==== UTILIDADES ====
 
-# Normalizador de nombres (para que "Hoja_verdes", "verdes-hoja", etc. cuenten como "verdes")
-def normalize(label: str) -> str:
-    return (
-        label.strip()
-             .lower()
-             .replace("_", "")
-             .replace("-", "")
-             .replace("hoja", "")
-             .replace(" hojas", "")
-             .strip()
-    )
 
-# Diagnósticos y colores por clase (usamos claves NORMALIZADAS)
+# Canonicaliza el nombre detectado a { "negras", "blanca", "verdes" }
+def canonical(label: str) -> str:
+    s = (
+        label.strip().lower()
+        .replace("_", "").replace("-", "")
+        .replace("hoja", "").replace("hojas", "")
+    )
+    # Mapeo flexible por subcadenas
+    if "negra" in s:
+        return "negras"
+    if "blanc" in s:
+        return "blanca"
+    if "verde" in s:
+        return "verdes"
+    return s  # por si llegara otra clase
+
+# Diagnósticos y colores por clase (claves CANÓNICAS)
 DIAGNOSIS = {
     "negras": {
         "color": "red",
-        "msg": "⚠️ Se detectaron **hojas negrass** — posible fumagina/daño por plagas. Revisa focos, retira hojas muy afectadas y evalúa tratamiento fungicida."
+        "msg": "⚠️ Se detectaron hojas negras — posible **fumagina** o daño por plagas. Revisa focos, retira hojas muy afectadas y evalúa tratamiento fungicida."
     },
     "blanca": {
         "color": "orange",
-        "msg": "⚠️ Se detectaron **hojas blancas (melaza)** — probable presencia de insectos (pulgones/mosca blanca). Limpia, monitorea y considera control biológico o químico."
+        "msg": "⚠️ Se detectaron hojas blancas (melaza) — probable presencia de insectos (pulgones/mosca blanca). Limpia, monitorea y considera control biológico o químico."
     },
     "verdes": {
         "color": "lime",
-        "msg": "✅ Solo se detectaron **hojas verdess** — el cultivo parece sano en esta imagen."
+        "msg": "✅ Solo se detectaron hojas verdes — el cultivo parece **sano** en esta imagen."
     }
 }
 
 def pick_color(label: str) -> str:
-    return DIAGNOSIS.get(normalize(label), {}).get("color", "gray")
+    return DIAGNOSIS.get(canonical(label), {}).get("color", "gray")
 
-def to_json(results, class_names):
-    if not results:
-        return {"image": {}, "predictions": []}
-    r = results[0]
-    h, w = r.orig_shape
-    preds = []
-    if r.boxes is not None and len(r.boxes) > 0:
-        xyxy = r.boxes.xyxy.cpu().numpy()
-        confs = r.boxes.conf.cpu().numpy()
-        clss  = r.boxes.cls.cpu().numpy().astype(int)
-        for (x0, y0, x1, y1), cf, ci in zip(xyxy, confs, clss):
-            ww, hh = float(x1 - x0), float(y1 - y0)
-            xc, yc = float(x0 + ww/2), float(y0 + hh/2)
-            preds.append({
-                "x": xc, "y": yc, "width": ww, "height": hh,
-                "class": class_names.get(ci, str(ci)),  # nombre original
-                "confidence": float(cf)
-            })
-    return {"image": {"width": w, "height": h}, "predictions": preds}
+def render_black_aphid_card():
+    st.markdown("""
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+      .card {font-family:'Poppins',system-ui; background:#0f172a; border:1px solid #1f2937;
+             border-radius:16px; padding:18px 20px; color:#e5e7eb;}
+      .card h3 {margin:0 0 10px 0; font-weight:700; font-size:1.1rem}
+      .tag {display:inline-block; padding:4px 10px; border-radius:999px; font-size:.82rem;
+            background:#111827; color:#facc15; border:1px solid #374151; margin-bottom:8px;}
+      table {width:100%; border-collapse:separate; border-spacing:0 8px; font-size:.95rem}
+      td:nth-child(1){color:#9ca3af; width:34%;}
+      td{vertical-align:top; padding:6px 8px; background:#0b1220; border-radius:10px; border:1px solid #1f2937;}
+      .emph{font-weight:600; color:#f9fafb}
+      .strong{font-weight:700;}
+    </style>
+    <div class="card">
+      <span class="tag">🍋 Pulgón Negro de los Cítricos <span class="emph">(Toxoptera citricida)</span> — Adulto áptero</span>
+      <table>
+        <tr><td><span class="strong">Identificación</span></td><td>Pequeño (~1.5–2.5 mm). Cuerpo <span class="emph">globoso</span>, de color <span class="emph">negro brillante</span> o castaño muy oscuro. La forma áptera es <span class="emph">sin alas</span>.</td></tr>
+        <tr><td><span class="strong">Ubicación</span></td><td>Colonias densas en el <span class="emph">envés</span> de hojas jóvenes y <span class="emph">brotes tiernos</span>.</td></tr>
+        <tr><td><span class="strong">Temporadas (Perú)</span></td><td>Actividad alta en <span class="emph">Primavera</span> (Sep–Dic) y <span class="emph">Verano</span> (Dic–Mar).</td></tr>
+        <tr><td><span class="strong">Daño Directo</span></td><td><span class="emph">Succiona la savia</span>, debilitando la planta. Hojas pueden <span class="emph">enrollarse/deformarse</span>.</td></tr>
+        <tr><td><span class="strong">Daño Indirecto</span></td><td>Produce <span class="emph">melaza</span> que favorece el hongo <span class="emph">fumagina</span> (capa negra de hollín).</td></tr>
+        <tr><td><span class="strong">Mayor Riesgo</span></td><td>Vector eficiente del <span class="emph">Virus de la Tristeza de los Cítricos (VTC)</span>.</td></tr>
+      </table>
+    </div>
+    """, unsafe_allow_html=True)
 
-def draw_boxes(pil_img, preds):
-    draw = ImageDraw.Draw(pil_img)
-    try: font = ImageFont.load_default()
-    except: font = None
-    W, H = pil_img.size
-    iw = preds.get("image", {}).get("width", W)
-    ih = preds.get("image", {}).get("height", H)
-    sx, sy = W / float(iw), H / float(ih)
 
-    for p in preds.get("predictions", []):
-        x, y, ww, hh = p["x"], p["y"], p["width"], p["height"]
-        x0, y0 = int((x - ww/2) * sx), int((y - hh/2) * sy)
-        x1, y1 = int((x + ww/2) * sx), int((y + hh/2) * sy)
-        color = pick_color(p["class"])
-        draw.rectangle([x0, y0, x1, y1], outline=color, width=3)
-        label = f"{p['class']} {p['confidence']:.2f}"
-        pad = 3
-        if font:
-            tw = draw.textlength(label, font=font)
-            draw.rectangle([x0, y0 - 14, x0 + tw + 2*pad, y0], fill="black")
-            draw.text((x0 + pad, y0 - 12), label, fill="white", font=font)
-        else:
-            draw.text((x0, max(0, y0 - 12)), label, fill="white")
-    return pil_img
 
-# ==== INFERENCIA ====
+## ==== INFERENCIA ====
 if uploaded:
     img = Image.open(uploaded).convert("RGB")
     max_w = 1600
@@ -218,35 +216,44 @@ if uploaded:
 
     preds = to_json(results, model.names)
 
-    # ---- Conteo por clase (normalizado) y diagnóstico resumido ----
     from collections import Counter
-    counts = Counter(normalize(p["class"]) for p in preds.get("predictions", []))
+    counts = Counter(canonical(p["class"]) for p in preds.get("predictions", []))
+    c_negras  = int(counts.get("negras", 0))
+    c_blanca  = int(counts.get("blanca", 0))
+    c_verdes  = int(counts.get("verdes", 0))
 
-    if counts:
-        c_negras  = int(counts.get("negras", 0))
-        c_blanca = int(counts.get("blanca", 0))
-        c_verdes  = int(counts.get("verdes", 0))
-
-        col1, col2, col3 = st.columns(3)
-        col1.metric("negras",  c_negras)
-        col2.metric("Blanca", c_blanca)
-        col3.metric("verdes",  c_verdes)
-
-        # Prioridad del diagnóstico: negras > blanca > verdes
-        if c_negras > 0:
-            st.error(DIAGNOSIS["negras"]["msg"])
-        elif c_blanca > 0:
-            st.warning(DIAGNOSIS["blanca"]["msg"])
-        elif c_verdes > 0:
-            st.success(DIAGNOSIS["verdes"]["msg"])
-    else:
-        st.info("No se detectaron hojas en la imagen.")
-
-    st.subheader("📊 Predicciones (JSON)")
-    st.json(preds)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Negras",  c_negras)
+    col2.metric("Blanca",  c_blanca)
+    col3.metric("Verdes",  c_verdes)
 
     vis = draw_boxes(img.copy(), preds)
     st.image(vis, caption="Detecciones", use_container_width=True)
+
+    # Diagnóstico principal
+    if c_negras > 0:
+        st.error(DIAGNOSIS["negras"]["msg"])
+    elif c_blanca > 0:
+        st.warning(DIAGNOSIS["blanca"]["msg"])
+    elif c_verdes > 0:
+        st.success(DIAGNOSIS["verdes"]["msg"])
+    else:
+        st.info("No se detectaron hojas en la imagen.")
+
+    # Si se detectan hojas negras, mostrar ficha técnica + foto
+    if c_negras > 0:
+        left, right = st.columns([2, 1])
+        with left:
+            render_black_aphid_card()
+        with right:
+            if APHID_IMAGE_URL:
+                st.image(APHID_IMAGE_URL, caption="Pulgón negro (referencia)", use_container_width=True)
+            else:
+                st.caption("ℹ️ Agrega APHID_IMAGE_URL en Secrets/.env para mostrar una foto de referencia.")
+
+    # JSON opcional colapsable
+    with st.expander("📊 Ver JSON de predicciones"):
+        st.json(preds)
 
     buf = io.BytesIO()
     vis.save(buf, "PNG")
@@ -254,4 +261,3 @@ if uploaded:
     st.download_button("⬇️ Descargar imagen con detecciones", buf, "detecciones.png", "image/png")
 else:
     st.info("Sube una imagen para ejecutar la detección.")
-
