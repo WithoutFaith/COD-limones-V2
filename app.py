@@ -301,26 +301,30 @@ if uploaded:
     else:
         st.info("No se detectaron hojas en la imagen.")
 
-   # Si se detectan hojas negras, mostrar dos fichas técnicas + dos fotos
+  # Si se detectan hojas negras, mostrar dos fichas técnicas + fotos alineadas
 if c_negras > 0:
-    left, right = st.columns([2, 1])
-
-    with left:
-        # 1) T. citricida
+    # --- Fila 1: T. citricida ---
+    col1, col2 = st.columns([2, 1], vertical_alignment="center")
+    with col1:
         render_black_aphid_card()
-        st.divider()
-        # 2) T. aurantii
-        render_brownblack_aphid_card()
-
-    with right:
-        # Imagen 1
+    with col2:
         if APHID_IMAGE_URL:
             st.image(APHID_IMAGE_URL, caption="Pulgón negro (T. citricida) — referencia", use_container_width=True)
-        # Imagen 2
+        else:
+            st.caption("ℹ️ Falta imagen de T. citricida (APHID_IMAGE_URL).")
+
+    st.divider()  # Línea separadora entre fichas
+
+    # --- Fila 2: T. aurantii ---
+    col3, col4 = st.columns([2, 1], vertical_alignment="center")
+    with col3:
+        render_brownblack_aphid_card()
+    with col4:
         if APHID2_IMAGE_URL:
             st.image(APHID2_IMAGE_URL, caption="Pulgón pardo/negro (T. aurantii) — referencia", use_container_width=True)
-        if not (APHID_IMAGE_URL or APHID2_IMAGE_URL):
-            st.caption("ℹ️ Agrega APHID_IMAGE_URL y/o APHID2_IMAGE_URL en Secrets/.env para mostrar fotos de referencia.")
+        else:
+            st.caption("ℹ️ Falta imagen de T. aurantii (APHID2_IMAGE_URL).")
+
 
 
 
