@@ -15,7 +15,10 @@ WEIGHTS_PATH = os.getenv("YOLO_WEIGHTS", DEFAULT_WEIGHTS)
 APHID_IMAGE_URL = st.secrets.get("APHID_IMAGE_URL", "") or os.getenv("APHID_IMAGE_URL", "")
 if not APHID_IMAGE_URL:
     APHID_IMAGE_URL = "https://inaturalist-open-data.s3.amazonaws.com/photos/4728889/medium.jpg"
-
+# --- IMAGEN DE REFERENCIA 2 (Pulgón Pardo/Negro del Naranjo) ---
+APHID2_IMAGE_URL = st.secrets.get("APHID2_IMAGE_URL", "") or os.getenv("APHID2_IMAGE_URL", "")
+if not APHID2_IMAGE_URL:
+    APHID2_IMAGE_URL = "http://gipcitricos.ivia.es/wp-content/uploads/2010/07/Foto-15.jpg"
 # =======================
 # DESCARGA ROBUSTA + VALIDACIÓN (.pt)
 # =======================
@@ -318,3 +321,4 @@ if c_negras > 0:
             st.image(APHID2_IMAGE_URL, caption="Pulgón pardo/negro (T. aurantii) — referencia", use_container_width=True)
         if not (APHID_IMAGE_URL or APHID2_IMAGE_URL):
             st.caption("ℹ️ Agrega APHID_IMAGE_URL y/o APHID2_IMAGE_URL en Secrets/.env para mostrar fotos de referencia.")
+
