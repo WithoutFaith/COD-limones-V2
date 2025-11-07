@@ -12,12 +12,9 @@ DEFAULT_WEIGHTS = "weights/best.pt"
 WEIGHTS_PATH = os.getenv("YOLO_WEIGHTS", DEFAULT_WEIGHTS)
 
 # --- IMAGEN DE REFERENCIA (Pulgón Negro) ---
-# Puedes usar una URL directa o definirla en tu archivo de Secrets
 APHID_IMAGE_URL = st.secrets.get("APHID_IMAGE_URL", "") or os.getenv("APHID_IMAGE_URL", "")
-
-# Si quieres fijarla manualmente:
 if not APHID_IMAGE_URL:
-    APHID_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/4b/Toxoptera_citricida02.jpg"
+    APHID_IMAGE_URL = "https://inaturalist-open-data.s3.amazonaws.com/photos/4728889/medium.jpg"
 
 # =======================
 # DESCARGA ROBUSTA + VALIDACIÓN (.pt)
@@ -68,11 +65,10 @@ def maybe_download_weights(weights_path: str):
     url = os.getenv("WEIGHTS_URL")
     os.makedirs(os.path.dirname(weights_path), exist_ok=True)
 
-    # ¿ya existe y parece válido?
     if os.path.exists(weights_path):
         sz = _size_mb(weights_path)
         if (not _looks_like_html(weights_path)) and (sz > 50):
-            return  # no mostrar mensajes
+            return
         else:
             try: os.remove(weights_path)
             except: pass
@@ -102,7 +98,6 @@ def maybe_download_weights(weights_path: str):
         st.error(f"❌ No se pudo descargar los pesos desde WEIGHTS_URL.\nDetalle: {e}")
         st.stop()
 
-# --- LLAMAR LA DESCARGA DESPUÉS DE DEFINIR LA FUNCIÓN ---
 maybe_download_weights(WEIGHTS_PATH)
 
 # --- CHEQUEO SILENCIOSO DE OPENCV ---
@@ -114,26 +109,19 @@ except Exception as e:
 
 # --- IMPORTAR YOLO ---
 from ultralytics import YOLO
-
 @st.cache_resource
 def load_model(path: str):
     return YOLO(path)
-
 model = load_model(WEIGHTS_PATH)
 
 # ==== INTERFAZ ====
 uploaded = st.file_uploader("Sube una imagen (JPG/PNG)", type=["jpg", "jpeg", "png"])
-
 conf = st.slider("Confianza mínima", 0.0, 1.0, 0.5, 0.05)
 iou  = st.slider("IoU (overlap) máx.", 0.0, 1.0, 0.5, 0.05)
+st.caption("💡 **Confianza**: 0.5–0.7 equilibrio · 0.8–0.9 muy estricto  \n"
+           "💡 **IoU**: cuánto se permiten solapar las cajas tras NMS.")
 
-st.caption(
-    "💡 **Confianza**: 0.5–0.7 equilibrio · 0.8–0.9 muy estricto  \n"
-    "💡 **IoU**: cuánto se permiten solapar las cajas tras NMS."
-)
-
-# ==== UTILIDADES ====
-
+# ==== UTILIDADES (deben ir ANTES de la inferencia) ====
 
 # Canonicaliza el nombre detectado a { "negras", "blanca", "verdes" }
 def canonical(label: str) -> str:
@@ -142,12 +130,11 @@ def canonical(label: str) -> str:
         .replace("_", "").replace("-", "")
         .replace("hoja", "").replace("hojas", "")
     )
-    # Mapeo flexible por subcadenas
-    if "negra" in s:
+    if "negra" in s:   # negras, negra, hoja_negra...
         return "negras"
-    if "blanc" in s:
+    if "blanc" in s:   # blanca, blancas
         return "blanca"
-    if "verde" in s:
+    if "verde" in s:   # verde, verdes
         return "verdes"
     return s  # por si llegara otra clase
 
@@ -170,13 +157,59 @@ DIAGNOSIS = {
 def pick_color(label: str) -> str:
     return DIAGNOSIS.get(canonical(label), {}).get("color", "gray")
 
+def to_json(results, class_names):
+    """Convierte los resultados de YOLO en un JSON simple {image:{w,h}, predictions:[...]}."""
+    if not results:
+        return {"image": {}, "predictions": []}
+    r = results[0]
+    h, w = r.orig_shape
+    preds = []
+    if r.boxes is not None and len(r.boxes) > 0:
+        xyxy = r.boxes.xyxy.cpu().numpy()
+        confs = r.boxes.conf.cpu().numpy()
+        clss  = r.boxes.cls.cpu().numpy().astype(int)
+        for (x0, y0, x1, y1), cf, ci in zip(xyxy, confs, clss):
+            ww, hh = float(x1 - x0), float(y1 - y0)
+            xc, yc = float(x0 + ww/2), float(y0 + hh/2)
+            preds.append({
+                "x": xc, "y": yc, "width": ww, "height": hh,
+                "class": class_names.get(ci, str(ci)),
+                "confidence": float(cf)
+            })
+    return {"image": {"width": w, "height": h}, "predictions": preds}
+
+def draw_boxes(pil_img, preds):
+    """Dibuja cajas con color según clase canónica."""
+    draw = ImageDraw.Draw(pil_img)
+    try: font = ImageFont.load_default()
+    except: font = None
+    W, H = pil_img.size
+    iw = preds.get("image", {}).get("width", W)
+    ih = preds.get("image", {}).get("height", H)
+    sx, sy = W / float(iw), H / float(ih)
+
+    for p in preds.get("predictions", []):
+        x, y, ww, hh = p["x"], p["y"], p["width"], p["height"]
+        x0, y0 = int((x - ww/2) * sx), int((y - hh/2) * sy)
+        x1, y1 = int((x + ww/2) * sx), int((y + hh/2) * sy)
+        color = pick_color(p["class"])
+        draw.rectangle([x0, y0, x1, y1], outline=color, width=3)
+        label = f"{p['class']} {p['confidence']:.2f}"
+        pad = 3
+        if font:
+            tw = draw.textlength(label, font=font)
+            draw.rectangle([x0, y0 - 14, x0 + tw + 2*pad, y0], fill="black")
+            draw.text((x0 + pad, y0 - 12), label, fill="white", font=font)
+        else:
+            draw.text((x0, max(0, y0 - 12)), label, fill="white")
+    return pil_img
+
 def render_black_aphid_card():
     st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
       .card {font-family:'Poppins',system-ui; background:#0f172a; border:1px solid #1f2937;
              border-radius:16px; padding:18px 20px; color:#e5e7eb;}
-      .card h3 {margin:0 0 10px 0; font-weight:700; font-size:1.1rem}
       .tag {display:inline-block; padding:4px 10px; border-radius:999px; font-size:.82rem;
             background:#111827; color:#facc15; border:1px solid #374151; margin-bottom:8px;}
       table {width:100%; border-collapse:separate; border-spacing:0 8px; font-size:.95rem}
@@ -198,9 +231,7 @@ def render_black_aphid_card():
     </div>
     """, unsafe_allow_html=True)
 
-
-
-## ==== INFERENCIA ====
+# ==== INFERENCIA ====
 if uploaded:
     img = Image.open(uploaded).convert("RGB")
     max_w = 1600
