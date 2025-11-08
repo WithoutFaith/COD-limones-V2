@@ -22,10 +22,12 @@ if not APHID2_IMAGE_URL:
 # --- IMÁGENES DE REFERENCIA (Melaza) ---
 MELAZA_IMG1_URL = st.secrets.get("MELAZA_IMG1_URL", "") or os.getenv("MELAZA_IMG1_URL", "")
 MELAZA_IMG2_URL = st.secrets.get("MELAZA_IMG2_URL", "") or os.getenv("MELAZA_IMG2_URL", "")
-
-#  fijarlas manualmente 
-MELAZA_IMG1_URL = "https://plantasyjardin.com/wp-content/uploads/2015/07/Hoja-de-Laurel-con-presencia-de-melado-o-melaza-copia-e1626814351370.jpg"  # hoja con melaza clara/pegajosa
+MELAZA_IMG1_URL = "https://cuidatree.es/wp-content/uploads/2023/04/mosca-blanca-algodonosa-citricos.jpg"  # hoja con melaza clara/pegajosa
 MELAZA_IMG2_URL = "https://www.dinafem.org/uploads/fumagina7DNF.jpg"  # fumagina negra sobre melaza
+# --- IMAGEN DE MOSCA BLANCA ALGODONOSA ---
+MOSCA_IMG_URL = st.secrets.get("MOSCA_IMG_URL", "") or os.getenv("MOSCA_IMG_URL", "")
+if not MOSCA_IMG_URL:
+    MOSCA_IMG_URL = "https://upload.wikimedia.org/wikipedia/commons/7/7f/Aleurothrixus_floccosus.jpg"  # cambia si tienes otra mejor
 
    
 # =======================
@@ -294,6 +296,33 @@ def render_melaza_card():
       </table>
     </div>
     """, unsafe_allow_html=True)
+def render_mosca_blanca_card():
+    st.markdown("""
+    <style>
+      .card {font-family:'Poppins',system-ui; background:#0f172a; border:1px solid #1f2937;
+             border-radius:16px; padding:18px 20px; color:#e5e7eb;}
+      .tag {display:inline-block; padding:4px 10px; border-radius:999px; font-size:.92rem;
+            background:#111827; color:#93c5fd; border:1px solid #374151; margin-bottom:8px;}
+      table {width:100%; border-collapse:separate; border-spacing:0 8px; font-size:.95rem}
+      td:nth-child(1){color:#9ca3af; width:34%;}
+      td{vertical-align:top; padding:6px 8px; background:#0b1220; border-radius:10px; border:1px solid #1f2937;}
+      .emph{font-weight:600; color:#f9fafb}
+      .strong{font-weight:700;}
+    </style>
+    <div class="card">
+      <span class="tag">☁️ Mosca Blanca Algodonosa (<em>Aleurothrixus floccosus</em>)</span>
+      <table>
+        <tr><td><span class="strong">Identificación (Adulto)</span></td><td>Pequeño (~1.1 mm). Cuerpo <span class="emph">amarillento</span> cubierto de una <span class="emph">secreción cerosa blanca</span> en polvo.</td></tr>
+        <tr><td><span class="strong">Identificación (Ninfa)</span></td><td>Fija, aplanada, de color claro, con una <span class="emph">lasonisad blanca y algodonosa</span> de aspecto similar a “copos de algodón”.</td></tr>
+        <tr><td><span class="strong">Ubicación Típica</span></td><td>Colonias densas en el <span class="emph">envés (parte inferior)</span> de las hojas tiernas.</td></tr>
+        <tr><td><span class="strong">Temporadas (Perú)</span></td><td>Reproducción continua en climas cálidos de la costa, con picos en <span class="emph">Primavera</span> (Sep–Dic) y <span class="emph">Verano</span> (Dic–Mar).</td></tr>
+        <tr><td><span class="strong">Daño Directo</span></td><td><span class="emph">Succiona la savia</span> de las hojas, causando debilitamiento, clorosis (amarillamiento) e inhibición del crecimiento.</td></tr>
+        <tr><td><span class="strong">Daño Indirecto</span></td><td>Produce abundante <span class="emph">melaza</span> y <span class="emph">cera algodonosa</span>, que facilitan el crecimiento del hongo <span class="emph">Fumagina (Negrilla)</span>.</td></tr>
+        <tr><td><span class="strong">Control</span></td><td>El control biológico con parasitoides como <span class="emph">Cales noacki</span> ha sido efectivo en Perú para mantener esta plaga bajo control.</td></tr>
+      </table>
+    </div>
+    """, unsafe_allow_html=True)
+
 
 # ==== INFERENCIA ====
 if uploaded:
@@ -350,10 +379,9 @@ if uploaded:
             if not (('MELAZA_IMG1_URL' in globals() and MELAZA_IMG1_URL) or
                     ('MELAZA_IMG2_URL' in globals() and MELAZA_IMG2_URL)):
                 st.caption("ℹ️ Agrega MELAZA_IMG1_URL y/o MELAZA_IMG2_URL en Secrets/.env para mostrar fotos de referencia.")
-
         st.divider()
 
-    # Si se detectan hojas negras, mostrar dos fichas técnicas + fotos alineadas
+    # ---------- Sección PULGONES (si hay 'negras') ----------
     if c_negras > 0:
         # --- Fila 1: T. citricida ---
         col1, col2 = st.columns([2, 1], vertical_alignment="center")
@@ -376,6 +404,18 @@ if uploaded:
                 st.image(APHID2_IMAGE_URL, caption="Pulgón pardo/negro (T. aurantii) — referencia", use_container_width=True)
             else:
                 st.caption("ℹ️ Falta imagen de T. aurantii (APHID2_IMAGE_URL).")
+
+    # ---------- Sección MOSCA BLANCA (si hay 'blanca' o 'negras') ----------
+    if c_blanca > 0 or c_negras > 0:
+        st.divider()
+        lmb, rmb = st.columns([2, 1], vertical_alignment="center")
+        with lmb:
+            render_mosca_blanca_card()
+        with rmb:
+            if 'MOSCA_IMG_URL' in globals() and MOSCA_IMG_URL:
+                st.image(MOSCA_IMG_URL, caption="Mosca blanca algodonosa — referencia", use_container_width=True)
+            else:
+                st.caption("ℹ️ Agrega MOSCA_IMG_URL en Secrets/.env para mostrar imagen de referencia.")
 
     # JSON opcional colapsable + descarga
     with st.expander("📊 Ver JSON de predicciones"):
