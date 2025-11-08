@@ -129,7 +129,18 @@ def load_model(path: str):
 model = load_model(WEIGHTS_PATH)
 
 # ==== INTERFAZ ====
-uploaded = st.file_uploader("Sube una imagen (JPG/PNG)", type=["jpg", "jpeg", "png"])
+st.markdown("### 📸 Carga o toma una imagen para analizarla")
+
+# Opción 1: Tomar foto con la cámara
+camera_photo = st.camera_input("Tomar una foto con la cámara (opcional)")
+
+# Opción 2: Subir archivo desde el dispositivo
+uploaded = st.file_uploader("O subir una imagen (JPG/PNG)", type=["jpg", "jpeg", "png"])
+
+# Determinar cuál usar
+if camera_photo is not None:
+    uploaded = camera_photo  # prioriza la cámara si hay foto
+
 conf = st.slider("Confianza mínima", 0.0, 1.0, 0.5, 0.05)
 iou  = st.slider("IoU (overlap) máx.", 0.0, 1.0, 0.5, 0.05)
 st.caption("💡 **Confianza**: 0.5–0.7 equilibrio · 0.8–0.9 muy estricto  \n"
