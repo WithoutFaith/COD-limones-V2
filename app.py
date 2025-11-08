@@ -19,6 +19,15 @@ if not APHID_IMAGE_URL:
 APHID2_IMAGE_URL = st.secrets.get("APHID2_IMAGE_URL", "") or os.getenv("APHID2_IMAGE_URL", "")
 if not APHID2_IMAGE_URL:
     APHID2_IMAGE_URL = "https://inaturalist-open-data.s3.amazonaws.com/photos/11126079/medium.jpg"
+# --- IMÁGENES DE REFERENCIA (Melaza) ---
+MELAZA_IMG1_URL = st.secrets.get("MELAZA_IMG1_URL", "") or os.getenv("MELAZA_IMG1_URL", "")
+MELAZA_IMG2_URL = st.secrets.get("MELAZA_IMG2_URL", "") or os.getenv("MELAZA_IMG2_URL", "")
+
+#  fijarlas manualmente 
+MELAZA_IMG1_URL = "https://plantasyjardin.com/wp-content/uploads/2015/07/Hoja-de-Laurel-con-presencia-de-melado-o-melaza-copia-e1626814351370.jpg"  # hoja con melaza clara/pegajosa
+MELAZA_IMG2_URL = "https://www.dinafem.org/uploads/fumagina7DNF.jpg"  # fumagina negra sobre melaza
+
+   
 # =======================
 # DESCARGA ROBUSTA + VALIDACIÓN (.pt)
 # =======================
@@ -259,7 +268,33 @@ def render_brownblack_aphid_card():
       </table>
     </div>
     """, unsafe_allow_html=True)
-   
+
+def render_melaza_card():
+    st.markdown("""
+    <style>
+      .card {font-family:'Poppins',system-ui; background:#0f172a; border:1px solid #1f2937;
+             border-radius:16px; padding:18px 20px; color:#e5e7eb;}
+      .tag {display:inline-block; padding:4px 10px; border-radius:999px; font-size:.92rem;
+            background:#111827; color:#fbbf24; border:1px solid #374151; margin-bottom:8px;}
+      table {width:100%; border-collapse:separate; border-spacing:0 8px; font-size:.95rem}
+      td:nth-child(1){color:#9ca3af; width:34%;}
+      td{vertical-align:top; padding:6px 8px; background:#0b1220; border-radius:10px; border:1px solid #1f2937;}
+      .emph{font-weight:600; color:#f9fafb}
+      .strong{font-weight:700;}
+    </style>
+    <div class="card">
+      <span class="tag">✨ Melaza (Mielcilla) Clara y Pegajosa</span>
+      <table>
+        <tr><td><span class="strong">Aspecto Visual</span></td><td>Capa <span class="emph">transparente u opaca</span>, <span class="emph">brillante</span> y <span class="emph">muy pegajosa</span> sobre la hoja (como miel o jarabe).</td></tr>
+        <tr><td><span class="strong">Insecto Productor</span></td><td>Principalmente <span class="emph">Pulgones</span> (<em>Toxoptera</em> spp.), <span class="emph">Mosca Blanca</span> (<em>Bemisia tabaci</em>) y <span class="emph">Cochinillas</span> (<em>Planococcus</em> spp., <em>Saissetia</em> spp.).</td></tr>
+        <tr><td><span class="strong">Naturaleza</span></td><td>Excremento rico en <span class="emph">azúcares</span> y aminoácidos no digeridos.</td></tr>
+        <tr><td><span class="strong">Ubicación Típica</span></td><td>En hojas, tallos y frutos, a menudo <span class="emph">debajo</span> de la colonia de insectos (la melaza gotea).</td></tr>
+        <tr><td><span class="strong">Daño Indirecto</span></td><td>Si no se elimina, actúa como <span class="emph">caldo de cultivo</span> para el hongo <span class="emph">fumagina</span> (negrilla) que forma una capa negra y limita la fotosíntesis.</td></tr>
+        <tr><td><span class="strong">Riesgo Adicional</span></td><td>Atrae <span class="emph">hormigas</span> (protegen a los insectos productores y dificultan el control biológico).</td></tr>
+      </table>
+    </div>
+    """, unsafe_allow_html=True)
+
 # ==== INFERENCIA ====
 if uploaded:
     img = Image.open(uploaded).convert("RGB")
@@ -302,6 +337,22 @@ if uploaded:
     else:
         st.info("No se detectaron hojas en la imagen.")
 
+    # ---------- Sección MELAZA (si hay 'blanca') ----------
+    if c_blanca > 0:
+        lcol, rcol = st.columns([2, 1], vertical_alignment="center")
+        with lcol:
+            render_melaza_card()
+        with rcol:
+            if 'MELAZA_IMG1_URL' in globals() and MELAZA_IMG1_URL:
+                st.image(MELAZA_IMG1_URL, caption="Melaza clara/pegajosa — referencia", use_container_width=True)
+            if 'MELAZA_IMG2_URL' in globals() and MELAZA_IMG2_URL:
+                st.image(MELAZA_IMG2_URL, caption="Fumagina (negrilla) sobre melaza — referencia", use_container_width=True)
+            if not (('MELAZA_IMG1_URL' in globals() and MELAZA_IMG1_URL) or
+                    ('MELAZA_IMG2_URL' in globals() and MELAZA_IMG2_URL)):
+                st.caption("ℹ️ Agrega MELAZA_IMG1_URL y/o MELAZA_IMG2_URL en Secrets/.env para mostrar fotos de referencia.")
+
+        st.divider()
+
     # Si se detectan hojas negras, mostrar dos fichas técnicas + fotos alineadas
     if c_negras > 0:
         # --- Fila 1: T. citricida ---
@@ -309,7 +360,7 @@ if uploaded:
         with col1:
             render_black_aphid_card()
         with col2:
-            if APHID_IMAGE_URL:
+            if 'APHID_IMAGE_URL' in globals() and APHID_IMAGE_URL:
                 st.image(APHID_IMAGE_URL, caption="Pulgón negro (T. citricida) — referencia", use_container_width=True)
             else:
                 st.caption("ℹ️ Falta imagen de T. citricida (APHID_IMAGE_URL).")
@@ -336,7 +387,3 @@ if uploaded:
 
 else:
     st.info("Sube una imagen para ejecutar la detección.")
-
-
-
-
