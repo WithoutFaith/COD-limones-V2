@@ -22,12 +22,12 @@ if not APHID2_IMAGE_URL:
 # --- IMÁGENES DE REFERENCIA (Melaza) ---
 MELAZA_IMG1_URL = st.secrets.get("MELAZA_IMG1_URL", "") or os.getenv("MELAZA_IMG1_URL", "")
 MELAZA_IMG2_URL = st.secrets.get("MELAZA_IMG2_URL", "") or os.getenv("MELAZA_IMG2_URL", "")
-MELAZA_IMG1_URL = "https://cuidatree.es/wp-content/uploads/2023/04/mosca-blanca-algodonosa-citricos.jpg"  # hoja con melaza clara/pegajosa
+MELAZA_IMG1_URL = "https://plantasyjardin.com/wp-content/uploads/2015/07/Hoja-de-Laurel-con-presencia-de-melado-o-melaza-copia-e1626814351370.jpg"  # hoja con melaza clara/pegajosa
 MELAZA_IMG2_URL = "https://www.dinafem.org/uploads/fumagina7DNF.jpg"  # fumagina negra sobre melaza
 # --- IMAGEN DE MOSCA BLANCA ALGODONOSA ---
 MOSCA_IMG_URL = st.secrets.get("MOSCA_IMG_URL", "") or os.getenv("MOSCA_IMG_URL", "")
 if not MOSCA_IMG_URL:
-    MOSCA_IMG_URL = "https://upload.wikimedia.org/wikipedia/commons/7/7f/Aleurothrixus_floccosus.jpg"  # cambia si tienes otra mejor
+    MOSCA_IMG_URL = "https://cuidatree.es/wp-content/uploads/2023/04/mosca-blanca-algodonosa-citricos.jpg"  # cambia si tienes otra mejor
 
    
 # =======================
